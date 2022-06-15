@@ -1,7 +1,7 @@
 const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-admin.initializeApp();
-const db = admin.firestore();
+const admin = require('firebase-admin');
+const app = !admin.apps.length ? admin.initializeApp() : admin.app();
+const db = app.firestore();
 const notesCtrl = {};
 
 /* TODO: Desde front validar q hayan cambiado un campo de la nota antes de pegar a API */
