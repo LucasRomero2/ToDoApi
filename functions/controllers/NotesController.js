@@ -1,10 +1,12 @@
 const functions = require("firebase-functions");
-const admin = require('firebase-admin');
+const admin = require("firebase-admin");
 const app = !admin.apps.length ? admin.initializeApp() : admin.app();
 const db = app.firestore();
 const notesCtrl = {};
 
-/* TODO: Desde front validar q hayan cambiado un campo de la nota antes de pegar a API */
+function formatDate(date) {
+  return date.toLocaleDateString("es-AR");
+}
 
 /* Get all notes from Firestore */
 notesCtrl.getNotes = async (req, res) => {
@@ -13,7 +15,11 @@ notesCtrl.getNotes = async (req, res) => {
     const notesQuery = await db.collection("notes").get();
 
     notesQuery.forEach((doc) => {
-      notesResponse.push({ id: doc.id, ...doc.data() });
+      notesResponse.push({
+        ...doc.data(),
+        id: doc.id,
+        date: formatDate(doc.data().date.toDate()),
+      });
     });
 
     return res.status(200).json(notesResponse);
@@ -29,9 +35,14 @@ notesCtrl.getNote = async (req, res) => {
 
   try {
     const note = await db.collection("notes").doc(id).get();
-
     if (note.exists) {
-      return res.status(200).json({ id: note.id, ...note.data() });
+      return res
+        .status(200)
+        .json({
+          id: note.id,
+          ...note.data(),
+          date: formatDate(note.data().date.toDate()),
+        });
     } else {
       functions.logger.error(`No se encontro la nota con id: ${id}`);
       return res.status(400).send(`No se encontro la nota con id: ${id}`);
@@ -45,10 +56,12 @@ notesCtrl.getNote = async (req, res) => {
 /* Create a note */
 notesCtrl.createNote = async (req, res) => {
   try {
+    const newDate = new Date(req.body.date);
+
     const newNote = {
       title: req.body.title,
       desc: req.body.desc,
-      date: req.body.date,
+      date: admin.firestore.Timestamp.fromDate(newDate),
       // userId: req.body["userId"], TODO: add userId
     };
 
@@ -72,6 +85,10 @@ notesCtrl.updateNote = async (req, res) => {
     const noteToEdit = await noteRef.get();
 
     if (noteToEdit.exists) {
+      const newDate = new Date(req.body.date);
+      console.log("🚀 ~ file: NotesController.js ~ line 89 ~ notesCtrl.updateNote= ~ newDate", newDate)
+      req.body.date = admin.firestore.Timestamp.fromDate(newDate);
+
       const editNote = {
         title: req.body.title,
         desc: req.body.desc,

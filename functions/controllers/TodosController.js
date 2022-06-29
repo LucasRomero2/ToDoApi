@@ -4,7 +4,9 @@ const app = !admin.apps.length ? admin.initializeApp() : admin.app();
 const db = app.firestore();
 const todosCtrl = {};
 
-/* TODO: Desde front validar q hayan cambiado un campo de la todo antes de pegar a API */
+function formatDate(date) {
+  return date.toLocaleDateString("es-AR");
+}
 
 /* Get all todos from Firestore */
 todosCtrl.getTodos = async (req, res) => {
@@ -13,7 +15,13 @@ todosCtrl.getTodos = async (req, res) => {
     const todosQuery = await db.collection("todos").get();
 
     todosQuery.forEach((doc) => {
-      todosResponse.push({ id: doc.id, ...doc.data() });
+      const date = doc.data().date.toDate();
+
+      todosResponse.push({
+        ...doc.data(),
+        id: doc.id,
+        date: formatDate(date),
+      });
     });
 
     return res.status(200).json(todosResponse);
@@ -31,7 +39,11 @@ todosCtrl.getTodo = async (req, res) => {
     const todo = await db.collection("todos").doc(id).get();
 
     if (todo.exists) {
-      return res.status(200).json({ id: todo.id, ...todo.data() });
+      return res.status(200).json({
+        ...todo.data(),
+        id: todo.id,
+        date: todo.data().date.toDate(),
+      });
     } else {
       functions.logger.error(`No se encontro el todo con id: ${id}`);
       return res.status(400).send(`No se encontro el todo con id: ${id}`);
@@ -45,14 +57,10 @@ todosCtrl.getTodo = async (req, res) => {
 /* Create a todo */
 todosCtrl.createTodo = async (req, res) => {
   try {
-    const newTodo = {
-      title: req.body.title,
-      desc: req.body.desc,
-      date: req.body.date,
-      // userId: req.body["userId"], TODO: add userId
-    };
+    const newDate = new Date(req.body.date);
+    req.body.date = admin.firestore.Timestamp.fromDate(newDate);
 
-    const todoCreated = await db.collection("todos").add(newTodo);
+    const todoCreated = await db.collection("todos").add(req.body);
     return res
       .status(201)
       .json(`Se ha creado el todo con id: ${todoCreated.id}`);
@@ -72,13 +80,10 @@ todosCtrl.updateTodo = async (req, res) => {
     const todoToEdit = await todoRef.get();
 
     if (todoToEdit.exists) {
-      const edittodo = {
-        title: req.body.title,
-        desc: req.body.desc,
-        date: req.body.date,
-      };
-
-      await todoRef.update(edittodo);
+      const newDate = new Date(req.body.date);
+      req.body.date = admin.firestore.Timestamp.fromDate(newDate);
+      
+      await todoRef.update(req.body);
       const todoEdited = await todoRef.get();
       return res
         .status(200)
