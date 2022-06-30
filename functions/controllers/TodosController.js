@@ -12,7 +12,9 @@ function formatDate(date) {
 todosCtrl.getTodos = async (req, res) => {
   const todosResponse = [];
   try {
-    const todosQuery = await db.collection("todos").get();
+    const filters = JSON.parse(req.query.filters)
+  
+    const todosQuery = await db.collection("todos").where("userUID", "==", filters.userUID).get();
 
     todosQuery.forEach((doc) => {
       const date = doc.data().date.toDate();

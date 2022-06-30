@@ -12,7 +12,9 @@ function formatDate(date) {
 notesCtrl.getNotes = async (req, res) => {
   const notesResponse = [];
   try {
-    const notesQuery = await db.collection("notes").get();
+    const filters = JSON.parse(req.query.filters)
+  
+    const notesQuery = await db.collection("notes").where("userUID", "==", filters.userUID).get();
 
     notesQuery.forEach((doc) => {
       notesResponse.push({
